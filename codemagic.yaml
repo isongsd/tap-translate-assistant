@@ -40,7 +40,7 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
 
   ios-release-archive:
-    name: iOS Release Archive
+    name: iOS Release Archive Only
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
@@ -77,3 +77,56 @@ workflows:
     artifacts:
       - build/**/*.xcarchive
       - /tmp/xcodebuild_logs/*.log
+
+  ios-app-store-connect:
+    name: iOS App Store Connect Upload
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - appstore_credentials
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.ttt.liveassistant
+      vars:
+        XCODE_PROJECT_DIR: ios
+        XCODE_WORKSPACE: TapTranslateAssistant.xcworkspace
+        XCODE_SCHEME: TapTranslateAssistant
+        BUNDLE_ID: com.ttt.liveassistant
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+      - name: Generate Xcode project
+        script: |
+          cd "$XCODE_PROJECT_DIR"
+          xcodegen generate
+      - name: Install CocoaPods dependencies
+        script: |
+          cd "$XCODE_PROJECT_DIR"
+          pod install
+      - name: Set up App Store code signing
+        script: |
+          cd "$XCODE_PROJECT_DIR"
+          xcode-project use-profiles
+      - name: Build signed IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$CM_BUILD_DIR/$XCODE_PROJECT_DIR/$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: false
+        submit_to_app_store: false
