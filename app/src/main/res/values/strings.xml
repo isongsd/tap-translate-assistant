@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">點按翻譯助手</string>
+    <string name="accessibility_service_label">點按翻譯助手點按輔助</string>
+    <string name="accessibility_service_summary">依使用者手動啟動，在指定準心位置執行限時重複點按。</string>
+    <string name="accessibility_service_description">點按翻譯助手需要無障礙權限，才能在使用者指定的準心位置執行限時重複點按。點按必須由使用者在懸浮窗手動開始，畫面會保持可見停止按鈕，最長 90 秒後自動停止。本服務不讀取文字內容、不自動貼上、不自動送出。</string>
+</resources>

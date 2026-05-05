@@ -1,0 +1,79 @@
+workflows:
+  ios-debug-simulator:
+    name: iOS Debug Simulator
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+      cocoapods: default
+      vars:
+        XCODE_PROJECT_DIR: ios
+        XCODE_WORKSPACE: TapTranslateAssistant.xcworkspace
+        XCODE_SCHEME: TapTranslateAssistant
+        BUNDLE_ID: com.ttt.liveassistant
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+      - name: Generate Xcode project
+        script: |
+          cd "$XCODE_PROJECT_DIR"
+          xcodegen generate
+      - name: Install CocoaPods dependencies
+        script: |
+          cd "$XCODE_PROJECT_DIR"
+          pod install
+      - name: Build iOS app for simulator
+        script: |
+          cd "$XCODE_PROJECT_DIR"
+          xcodebuild \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+    artifacts:
+      - ios/build/**/*.app
+      - /tmp/xcodebuild_logs/*.log
+
+  ios-release-archive:
+    name: iOS Release Archive
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+      cocoapods: default
+      vars:
+        XCODE_PROJECT_DIR: ios
+        XCODE_WORKSPACE: TapTranslateAssistant.xcworkspace
+        XCODE_SCHEME: TapTranslateAssistant
+        BUNDLE_ID: com.ttt.liveassistant
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+      - name: Generate Xcode project
+        script: |
+          cd "$XCODE_PROJECT_DIR"
+          xcodegen generate
+      - name: Install CocoaPods dependencies
+        script: |
+          cd "$XCODE_PROJECT_DIR"
+          pod install
+      - name: Archive iOS app
+        script: |
+          cd "$XCODE_PROJECT_DIR"
+          xcodebuild \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -archivePath "$CM_BUILD_DIR/build/TapTranslateAssistant.xcarchive" \
+            archive
+    artifacts:
+      - build/**/*.xcarchive
+      - /tmp/xcodebuild_logs/*.log

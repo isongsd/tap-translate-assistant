@@ -1,0 +1,39 @@
+name: TapTranslateAssistant
+options:
+  bundleIdPrefix: com.ttt
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+targets:
+  TapTranslateAssistant:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: TapTranslateAssistant
+        excludes:
+          - Assets.xcassets
+    resources:
+      - TapTranslateAssistant/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ttt.liveassistant
+        PRODUCT_NAME: 點按翻譯助手
+        INFOPLIST_FILE: TapTranslateAssistant/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        GENERATE_INFOPLIST_FILE: "NO"
+        CODE_SIGN_STYLE: Automatic
+schemes:
+  TapTranslateAssistant:
+    build:
+      targets:
+        TapTranslateAssistant: all
+    run:
+      config: Debug
+    archive:
+      config: Release

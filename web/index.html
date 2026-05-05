@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>直播 AI 互动助理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fb;
+      --surface: #ffffff;
+      --text: #151923;
+      --muted: #5e6676;
+      --line: #d9deea;
+      --primary: #2563eb;
+      --primary-dark: #1747ad;
+      --danger: #b42318;
+      --ok: #0f766e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(720px, 100%);
+      margin: 0 auto;
+      padding: 18px 14px 28px;
+    }
+
+    header {
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    section {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 7px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 11px;
+      color: var(--text);
+      background: #fff;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .row {
+      display: grid;
+      gap: 12px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 46px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    button:active {
+      background: var(--primary-dark);
+    }
+
+    .suggestions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .suggestion {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px 11px;
+      text-align: left;
+    }
+
+    .suggestion[aria-selected="true"] {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    }
+
+    .reply {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 18px;
+      font-weight: 750;
+    }
+
+    .reason,
+    .hint,
+    .status {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status {
+      min-height: 20px;
+      margin-top: 8px;
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .status.ok {
+      color: var(--ok);
+    }
+
+    .preview {
+      width: 100%;
+      min-height: 48px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 10px 11px;
+      background: #fbfcff;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 750;
+      resize: vertical;
+      user-select: text;
+    }
+
+    @media (min-width: 680px) {
+      .row.two {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>直播 AI 互动助理</h1>
+      <p class="subtitle">手机测试版：只生成建议；语音和弹幕目前需要手动输入。</p>
+    </header>
+
+    <section class="row">
+      <div>
+        <label for="persona">互动人设</label>
+        <select id="persona">
+          <option value="devoted">专情铁粉</option>
+        </select>
+      </div>
+      <div>
+        <label for="hostSpeech">主播语音文字（手动）</label>
+        <textarea id="hostSpeech" placeholder="手动输入或贴上主播目前在讲的内容"></textarea>
+      </div>
+      <div>
+        <label for="comments">最近弹幕（手动）</label>
+        <textarea id="comments" placeholder="手动输入或贴上弹幕，每行一条，最多取最近 5 条"></textarea>
+      </div>
+      <button id="generate" type="button">生成建议</button>
+      <div id="generateStatus" class="status"></div>
+    </section>
+
+    <section>
+      <label>候选回复</label>
+      <div id="suggestions" class="suggestions">
+        <div class="hint">输入内容后点“生成建议”。</div>
+      </div>
+    </section>
+
+    <section class="row">
+      <div>
+        <label>手动确认内容</label>
+        <textarea id="preview" class="preview" readonly>尚未选择</textarea>
+      </div>
+      <button id="copy" type="button">复制选中回复</button>
+      <div id="copyStatus" class="status"></div>
+    </section>
+  </main>
+
+  <script>
+    const maxReplyLength = 20;
+    const blockedTerms = [
+      "加微信",
+      "微信",
+      "vx",
+      "私信",
+      "轉帳",
+      "转账",
+      "返利",
+      "博彩",
+      "賭",
+      "赌",
+      "色情",
+      "外站",
+      "刷屏"
+    ];
+
+    const templates = {
+      devoted: [
+        ["主播这波太稳了😍", "专情铁粉式支持"],
+        ["认真听主播讲重点👂", "降低刷屏感"],
+        ["这个细节很加分👏", "正向承接话题"],
+        ["懂了，先收藏一下✨", "自然表达兴趣"],
+        ["主播多讲两句呗😄", "引导主播继续说明"]
+      ]
+    };
+
+    const persona = document.querySelector("#persona");
+    const hostSpeech = document.querySelector("#hostSpeech");
+    const comments = document.querySelector("#comments");
+    const suggestions = document.querySelector("#suggestions");
+    const preview = document.querySelector("#preview");
+    const generateStatus = document.querySelector("#generateStatus");
+    const copyStatus = document.querySelector("#copyStatus");
+    let selectedReply = "";
+
+    document.querySelector("#generate").addEventListener("click", generateSuggestions);
+    document.querySelector("#copy").addEventListener("click", copyReply);
+
+    function generateSuggestions() {
+      copyStatus.textContent = "";
+      selectedReply = "";
+      setPreview("尚未选择");
+
+      const contextText = [hostSpeech.value, ...recentComments()].join(" ").trim();
+      if (!contextText) {
+        renderStatus(generateStatus, "请先输入主播内容或弹幕。", "error");
+        suggestions.innerHTML = "<div class=\"hint\">缺少上下文。</div>";
+        return;
+      }
+
+      const safeSuggestions = templates[persona.value]
+        .map(([text, reason]) => ({ text: limitText(text), reason }))
+        .map((item) => ({ ...item, review: reviewSafety(item.text) }))
+        .filter((item) => item.review.allowed);
+
+      suggestions.innerHTML = "";
+      safeSuggestions.forEach((item, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "suggestion";
+        button.setAttribute("aria-selected", "false");
+        button.innerHTML = `<span class="reply"></span><span class="reason"></span>`;
+        button.querySelector(".reply").textContent = item.review.text;
+        button.querySelector(".reason").textContent = item.reason;
+        button.addEventListener("click", () => selectSuggestion(button, item.review.text));
+        suggestions.appendChild(button);
+        if (index === 0) {
+          selectSuggestion(button, item.review.text);
+        }
+      });
+
+      renderStatus(generateStatus, "已生成，请阅读后手动确认。", "ok");
+    }
+
+    function selectSuggestion(button, text) {
+      document.querySelectorAll(".suggestion").forEach((node) => {
+        node.setAttribute("aria-selected", "false");
+      });
+      button.setAttribute("aria-selected", "true");
+      selectedReply = text;
+      setPreview(text);
+      copyStatus.textContent = "";
+    }
+
+    async function copyReply() {
+      if (!selectedReply) {
+        renderStatus(copyStatus, "请先选择一条建议。", "error");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(selectedReply);
+        renderStatus(copyStatus, "已复制，请切回抖音后自行贴上并确认送出。", "ok");
+      } catch {
+        preview.focus();
+        preview.select();
+        const copied = document.execCommand("copy");
+        if (copied) {
+          renderStatus(copyStatus, "已复制，请切回抖音后自行贴上并确认送出。", "ok");
+        } else {
+          renderStatus(copyStatus, "浏览器不允许自动复制，请长按上方文字手动复制。", "error");
+        }
+      }
+    }
+
+    function recentComments() {
+      return comments.value
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(-5);
+    }
+
+    function reviewSafety(rawText) {
+      const normalized = rawText.trim().replace(/\s+/g, " ");
+      const matched = blockedTerms.filter((term) => {
+        return normalized.toLowerCase().includes(term.toLowerCase());
+      });
+
+      let text = normalized;
+      matched.forEach((term) => {
+        text = text.replaceAll(term, "*".repeat([...term].length));
+      });
+
+      return {
+        allowed: matched.length === 0 && text.length > 0,
+        text: limitText(text)
+      };
+    }
+
+    function limitText(value) {
+      return [...value].slice(0, maxReplyLength).join("");
+    }
+
+    function renderStatus(target, message, type) {
+      target.textContent = message;
+      target.className = `status ${type}`;
+    }
+
+    function setPreview(text) {
+      preview.value = text;
+    }
+  </script>
+</body>
+</html>
